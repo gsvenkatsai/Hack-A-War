@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Technical Debt Quantifier</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #c0392b;
+    --red-bright: #e74c3c;
+    --red-dim: #7b2228;
+    --black: #0a0a0a;
+    --dark: #111111;
+    --dark2: #1a1a1a;
+    --dark3: #222222;
+    --white: #f0ece4;
+    --grey: #888888;
+    --grey-dim: #444444;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Bebas Neue', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--sans);
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: var(--black); }
+  ::-webkit-scrollbar-thumb { background: var(--red); }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 48px;
+    border-bottom: 1px solid #1e1e1e;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-logo {
+    font-family: var(--display);
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--white);
+  }
+
+  .nav-logo span { color: var(--red); }
+
+  .nav-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 2px;
+    border: 1px solid var(--red-dim);
+    padding: 5px 12px;
+    text-transform: uppercase;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 140px 48px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    right: -200px; top: -200px;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(192,57,43,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-track {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .hero-track::before {
+    content: '';
+    display: block;
+    width: 32px; height: 1px;
+    background: var(--red);
+  }
+
+  .hero-title {
+    font-family: var(--display);
+    font-size: clamp(80px, 12vw, 160px);
+    line-height: 0.9;
+    letter-spacing: 4px;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+
+  .hero-title .accent { color: var(--red); }
+
+  .hero-sub {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 300;
+    color: var(--grey);
+    margin-top: 32px;
+    max-width: 520px;
+    line-height: 1.7;
+  }
+
+  .hero-quote {
+    margin-top: 48px;
+    padding: 20px 28px;
+    border-left: 3px solid var(--red);
+    background: rgba(192,57,43,0.06);
+    max-width: 640px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-style: italic;
+    color: var(--white);
+    line-height: 1.7;
+  }
+
+  .hero-scroll {
+    position: absolute;
+    bottom: 40px; left: 48px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--grey-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .hero-scroll::after {
+    content: '';
+    display: block;
+    width: 60px; height: 1px;
+    background: var(--grey-dim);
+    animation: expand 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  @keyframes expand { 0%,100%{width:20px} 50%{width:60px} }
+
+  /* SECTIONS */
+  section {
+    padding: 100px 48px;
+    border-top: 1px solid #1a1a1a;
+    position: relative;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .section-label::after {
+    content: '';
+    display: block;
+    flex: 1;
+    height: 1px;
+    background: #1e1e1e;
+  }
+
+  .section-title {
+    font-family: var(--display);
+    font-size: clamp(36px, 5vw, 64px);
+    letter-spacing: 2px;
+    line-height: 1;
+    margin-bottom: 48px;
+  }
+
+  /* PROBLEM */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 48px;
+  }
+
+  .problem-card {
+    background: var(--dark2);
+    padding: 40px 32px;
+    border: 1px solid #1e1e1e;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .problem-card:hover { border-color: var(--red-dim); }
+
+  .problem-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--red);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+
+  .problem-card:hover::before { transform: scaleX(1); }
+
+  .problem-num {
+    font-family: var(--display);
+    font-size: 72px;
+    color: #1e1e1e;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .problem-title {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--red);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .problem-text {
+    font-size: 14px;
+    color: var(--grey);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .stat-bar {
+    margin-top: 64px;
+    padding: 40px 48px;
+    background: var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .stat-num {
+    font-family: var(--display);
+    font-size: 80px;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .stat-desc {
+    font-size: 15px;
+    color: rgba(240,236,228,0.8);
+    max-width: 500px;
+    line-height: 1.7;
+  }
+
+  /* TABLE */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  .comparison-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--grey);
+    padding: 16px 20px;
+    text-align: left;
+    border-bottom: 1px solid #1e1e1e;
+  }
+
+  .comparison-table th:last-child { color: var(--red); }
+
+  .comparison-table td {
+    padding: 18px 20px;
+    font-size: 13px;
+    border-bottom: 1px solid #141414;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  .comparison-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .comparison-table td:first-child {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--grey);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .comparison-table td:nth-child(2) {
+    color: #555;
+    font-style: italic;
+  }
+
+  .comparison-table td:last-child {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  .bottom-callout {
+    margin-top: 32px;
+    padding: 20px 28px;
+    border: 1px solid var(--red-dim);
+    background: rgba(192,57,43,0.05);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* TWO LAYER */
+  .layers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-top: 8px;
+  }
+
+  .layer {
+    background: var(--dark2);
+    padding: 48px 40px;
+    border: 1px solid #1e1e1e;
+  }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .layer-icon {
+    width: 40px; height: 40px;
+    background: var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .layer-title {
+    font-family: var(--display);
+    font-size: 24px;
+    letter-spacing: 2px;
+  }
+
+  .layer-subtitle {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--grey);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .layer-item {
+    display: flex;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid #1a1a1a;
+    align-items: flex-start;
+  }
+
+  .layer-item:last-child { border-bottom: none; }
+
+  .layer-item-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    background: rgba(192,57,43,0.1);
+    padding: 3px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .layer-item-text {
+    font-size: 13px;
+    color: var(--grey);
+    line-height: 1.5;
+  }
+
+  .layer-item-text strong { color: var(--white); display: block; font-size: 13px; margin-bottom: 2px; }
+
+  .flow-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 48px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .flow-step {
+    background: var(--dark3);
+    border: 1px solid #222;
+    padding: 12px 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .flow-step.highlight {
+    background: var(--red);
+    color: var(--white);
+    border-color: var(--red);
+    font-weight: 500;
+  }
+
+  .flow-arrow {
+    color: var(--red-dim);
+    font-size: 18px;
+    flex-shrink: 0;
+    padding: 0 4px;
+  }
+
+  .key-insight {
+    margin-top: 48px;
+    padding: 24px 32px;
+    background: rgba(192,57,43,0.06);
+    border-left: 3px solid var(--red);
+    font-size: 14px;
+    color: var(--white);
+    line-height: 1.7;
+  }
+
+  /* ARCHITECTURE */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    margin-top: 8px;
+  }
+
+  .arch-layer {
+    background: var(--dark2);
+    padding: 32px;
+    border: 1px solid #1e1e1e;
+  }
+
+  .arch-layer-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .arch-layer-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .blue { color: #4a9eff; } .dot-blue { background: #4a9eff; }
+  .orange { color: #f39c12; } .dot-orange { background: #f39c12; }
+  .green { color: #27ae60; } .dot-green { background: #27ae60; }
+  .purple { color: #9b59b6; } .dot-purple { background: #9b59b6; }
+
+  .arch-items { list-style: none; }
+
+  .arch-items li {
+    font-size: 13px;
+    color: var(--grey);
+    padding: 8px 0;
+    border-bottom: 1px solid #141414;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+  }
+
+  .arch-items li::before {
+    content: '→';
+    color: var(--red-dim);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .arch-items li strong { color: var(--white); }
+
+  .differentiators {
+    margin-top: 2px;
+    background: var(--dark2);
+    border: 1px solid var(--red-dim);
+    padding: 32px;
+    grid-column: 1 / -1;
+  }
+
+  .diff-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .diff-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .diff-item { }
+
+  .diff-num {
+    font-family: var(--display);
+    font-size: 48px;
+    color: var(--red-dim);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .diff-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .diff-desc {
+    font-size: 12px;
+    color: var(--grey);
+    line-height: 1.6;
+    font-family: var(--mono);
+  }
+
+  /* TECH STACK */
+  .stack-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .stack-table tr {
+    border-bottom: 1px solid #141414;
+    transition: background 0.2s;
+  }
+
+  .stack-table tr:hover { background: rgba(255,255,255,0.02); }
+
+  .stack-table td {
+    padding: 16px 20px;
+    font-size: 13px;
+  }
+
+  .stack-table td:first-child {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--grey);
+    width: 220px;
+    letter-spacing: 1px;
+  }
+
+  .stack-table td:last-child {
+    color: var(--white);
+    font-weight: 500;
+  }
+
+  .free-badge {
+    display: inline-block;
+    background: rgba(39,174,96,0.15);
+    color: #27ae60;
+    border: 1px solid rgba(39,174,96,0.3);
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 8px;
+    letter-spacing: 2px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .warning-box {
+    margin-top: 32px;
+    padding: 20px 28px;
+    background: rgba(192,57,43,0.08);
+    border: 1px solid var(--red-dim);
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .warning-icon {
+    color: var(--red);
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .warning-text {
+    font-size: 13px;
+    color: var(--grey);
+    line-height: 1.6;
+  }
+
+  .warning-text strong { color: var(--white); }
+
+  .cost-banner {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .cost-stat {
+    background: var(--dark2);
+    border: 1px solid #1e1e1e;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .cost-num {
+    font-family: var(--display);
+    font-size: 56px;
+    color: var(--red);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .cost-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--grey);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* DEMO */
+  .demo-steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 8px;
+  }
+
+  .demo-step {
+    background: var(--dark2);
+    border: 1px solid #1e1e1e;
+    padding: 28px 24px;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .demo-step:hover { border-color: var(--red-dim); }
+
+  .demo-step-num {
+    font-family: var(--display);
+    font-size: 52px;
+    color: #1e1e1e;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .demo-step-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+
+  .demo-step-text {
+    font-size: 12px;
+    color: var(--grey);
+    line-height: 1.6;
+  }
+
+  .demo-layout {
+    margin-top: 32px;
+    background: var(--dark2);
+    border: 1px solid #1e1e1e;
+    padding: 20px 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .demo-layout span { color: var(--red); }
+
+  /* IMPACT */
+  .impact-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    margin-top: 8px;
+  }
+
+  .impact-card {
+    background: var(--dark2);
+    border: 1px solid #1e1e1e;
+    padding: 36px 32px;
+    transition: border-color 0.3s;
+  }
+
+  .impact-card:hover { border-color: var(--red-dim); }
+
+  .impact-icon {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  .impact-title {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 12px;
+  }
+
+  .impact-text {
+    font-size: 13px;
+    color: var(--grey);
+    line-height: 1.7;
+  }
+
+  .impact-stat {
+    margin-top: 48px;
+    padding: 36px 48px;
+    background: rgba(192,57,43,0.06);
+    border: 1px solid var(--red-dim);
+    text-align: center;
+  }
+
+  .impact-stat-num {
+    font-family: var(--display);
+    font-size: 72px;
+    color: var(--red);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .impact-stat-label {
+    font-size: 15px;
+    color: var(--grey);
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* TIMELINE */
+  .timeline {
+    margin-top: 8px;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 72px; top: 0; bottom: 0;
+    width: 1px;
+    background: #1e1e1e;
+  }
+
+  .timeline-item {
+    display: flex;
+    gap: 32px;
+    padding: 28px 0;
+    border-bottom: 1px solid #0f0f0f;
+    position: relative;
+    align-items: flex-start;
+  }
+
+  .timeline-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 1px;
+    width: 72px;
+    flex-shrink: 0;
+    padding-top: 4px;
+    text-align: right;
+    padding-right: 16px;
+  }
+
+  .timeline-dot {
+    position: absolute;
+    left: 68px;
+    top: 32px;
+    width: 9px; height: 9px;
+    background: var(--red);
+    border-radius: 50%;
+    border: 2px solid var(--black);
+    flex-shrink: 0;
+  }
+
+  .timeline-content {
+    padding-left: 24px;
+    flex: 1;
+  }
+
+  .timeline-phase {
+    font-family: var(--display);
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .timeline-desc {
+    font-size: 13px;
+    color: var(--grey);
+    line-height: 1.6;
+  }
+
+  .timeline-rule {
+    margin-top: 32px;
+    padding: 16px 24px;
+    border: 1px solid #1e1e1e;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* TEAM */
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 8px;
+  }
+
+  .team-card {
+    background: var(--dark2);
+    border: 1px solid #1e1e1e;
+    padding: 32px 24px;
+    transition: border-color 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .team-card:hover { border-color: var(--red-dim); }
+
+  .team-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--red);
+    transform: scaleX(0);
+    transition: transform 0.4s;
+  }
+
+  .team-card:hover::after { transform: scaleX(1); }
+
+  .team-name {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+
+  .team-role {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+
+  .team-skills {
+    list-style: none;
+  }
+
+  .team-skills li {
+    font-size: 12px;
+    color: var(--grey);
+    padding: 5px 0;
+    border-bottom: 1px solid #141414;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .team-skills li::before {
+    content: '·';
+    color: var(--red);
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .why-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 48px;
+  }
+
+  .why-card {
+    background: var(--dark3);
+    border: 1px solid #1e1e1e;
+    padding: 28px 24px;
+    text-align: center;
+  }
+
+  .why-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+
+  .why-text {
+    font-size: 12px;
+    color: var(--grey);
+    line-height: 1.6;
+  }
+
+  /* FOOTER */
+  footer {
+    padding: 60px 48px;
+    border-top: 1px solid #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-logo {
+    font-family: var(--display);
+    font-size: 20px;
+    letter-spacing: 4px;
+    color: var(--white);
+  }
+
+  .footer-logo span { color: var(--red); }
+
+  .footer-tagline {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--grey-dim);
+    letter-spacing: 2px;
+    max-width: 400px;
+    font-style: italic;
+    text-align: right;
+  }
+
+  /* ANIMATIONS */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    nav { padding: 16px 24px; }
+    .hero { padding: 120px 24px 60px; }
+    section { padding: 64px 24px; }
+    .problem-grid, .layers, .arch-grid, .team-grid, .why-grid, .demo-steps { grid-template-columns: 1fr; }
+    .diff-grid { grid-template-columns: 1fr; }
+    .cost-banner { grid-template-columns: 1fr; }
+    .impact-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+    .footer-tagline { text-align: center; }
+    .stat-bar { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">TDQ<span>.</span></div>
+  <div class="nav-tag">Coding Agents — Problem 1.6</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-track">Hackathon 2025 &nbsp;/&nbsp; Team Fire Storm</div>
+  <h1 class="hero-title">
+    TECHNICAL<br>
+    <span class="accent">DEBT</span><br>
+    QUANTIFIER
+  </h1>
+  <p class="hero-sub">AI-Powered Debt Propagation Engine for Engineering Teams</p>
+  <div class="hero-quote">
+    "We don't just find debt. We diagnose why it exists and simulate what fixing it will do to your system."
+  </div>
+  <div class="hero-scroll">Scroll to explore</div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="section-label">01 &nbsp; The Problem</div>
+  <h2 class="section-title">Technical Debt is<br>Silently <span style="color:var(--red)">Killing</span> Teams</h2>
+
+  <div class="problem-grid reveal">
+    <div class="problem-card">
+      <div class="problem-num">01</div>
+      <div class="problem-title">Silent Accumulation</div>
+      <div class="problem-text">Duplicated logic, outdated dependencies, missing tests, and tight coupling build up unnoticed until they become critical failures.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-num">02</div>
+      <div class="problem-title">No Business Case</div>
+      <div class="problem-text">Teams know debt exists but cannot quantify, prioritize, or make a case to fix it. No tool connects code issues to real business impact.</div>
+    </div>
+    <div class="problem-card">
+      <div class="problem-num">03</div>
+      <div class="problem-title">Massive Productivity Loss</div>
+      <div class="problem-text">Developers spend 33% of their time dealing with technical debt. For a 50-person team, that is $5 million per year lost in productivity.</div>
+    </div>
+  </div>
+
+  <div class="stat-bar reveal">
+    <div class="stat-num">33%</div>
+    <div class="stat-desc">of all developer time is wasted on technical debt — and no existing tool connects this directly to real business cost or user impact.</div>
+  </div>
+</section>
+
+<!-- EXISTING SOLUTIONS -->
+<section id="solutions">
+  <div class="section-label">02 &nbsp; Existing Solutions</div>
+  <h2 class="section-title">Tools Find Problems.<br>They Don't <span style="color:var(--red)">Solve</span> Them.</h2>
+
+  <table class="comparison-table reveal">
+    <thead>
+      <tr>
+        <th>Gap</th>
+        <th>Existing Tools</th>
+        <th>Our Tool</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Prioritization</td>
+        <td>Raw list of 300+ issues, no ranking</td>
+        <td>Top 10 ranked by blast radius score</td>
+      </tr>
+      <tr>
+        <td>Noise</td>
+        <td>Dumps everything</td>
+        <td>Filtered — only what actually matters</td>
+      </tr>
+      <tr>
+        <td>Explanations</td>
+        <td>"cyclomatic complexity is high"</td>
+        <td>Plain English + user and reliability impact</td>
+      </tr>
+      <tr>
+        <td>System View</td>
+        <td>File-only isolated metrics</td>
+        <td>Debt propagation across entire codebase</td>
+      </tr>
+      <tr>
+        <td>Unified Score</td>
+        <td>Per-file metrics only</td>
+        <td>Single Debt Score 0–100</td>
+      </tr>
+      <tr>
+        <td>Action Plan</td>
+        <td>"Here are your problems, good luck"</td>
+        <td>Sprint-ready remediation roadmap</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="bottom-callout reveal">
+    SonarQube tells you what is broken. &nbsp;We tell you what it is costing and what to fix first.
+  </div>
+</section>
+
+<!-- APPROACH -->
+<section id="approach">
+  <div class="section-label">03 &nbsp; Our Approach</div>
+  <h2 class="section-title">Two-Layer<br><span style="color:var(--red)">Intelligence</span> Architecture</h2>
+
+  <div class="layers reveal">
+    <div class="layer">
+      <div class="layer-header">
+        <div class="layer-icon">⚙️</div>
+        <div>
+          <div class="layer-title">LAYER 1</div>
+          <div class="layer-subtitle">Static Analysis — What is broken</div>
+        </div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">Radon</span>
+        <div class="layer-item-text"><strong>Cyclomatic Complexity</strong>Measures complexity per function</div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">Lizard</span>
+        <div class="layer-item-text"><strong>Code Duplication</strong>Long functions and repeated logic</div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">pip-audit</span>
+        <div class="layer-item-text"><strong>Dependency Health</strong>Vulnerable and outdated packages</div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">coverage.py</span>
+        <div class="layer-item-text"><strong>Test Coverage Gaps</strong>Untested code surfaces</div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">ast module</span>
+        <div class="layer-item-text"><strong>Dependency Graph</strong>Who imports who across the codebase</div>
+      </div>
+    </div>
+
+    <div class="layer">
+      <div class="layer-header">
+        <div class="layer-icon">🧠</div>
+        <div>
+          <div class="layer-title">LAYER 2</div>
+          <div class="layer-subtitle">GenAI Intelligence — What it means</div>
+        </div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">Call 01</span>
+        <div class="layer-item-text"><strong>Debt Fingerprinting</strong>Identifies root cause pattern of debt accumulation</div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">Call 02</span>
+        <div class="layer-item-text"><strong>Issue Enrichment</strong>Plain English explanation with user impact per finding</div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">Call 03</span>
+        <div class="layer-item-text"><strong>Fix Simulation</strong>Debt score before vs after with cascade benefits</div>
+      </div>
+      <div class="layer-item">
+        <span class="layer-item-tag">Call 04</span>
+        <div class="layer-item-text"><strong>Action Plan</strong>Sprint-ready roadmap ordered by impact-to-effort ratio</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-bar reveal">
+    <div class="flow-step">GitHub URL</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Static Analysis</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Dependency Graph</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step highlight">LLM Enrichment</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Debt Score</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Action Plan</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Dashboard</div>
+  </div>
+
+  <div class="key-insight reveal">
+    💡 The LLM never finds bugs. Static tools find them. The LLM reasons about system relationships, business impact, and what to do next.
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+  <div class="section-label">04 &nbsp; Architecture</div>
+  <h2 class="section-title">AWS-Powered<br><span style="color:var(--red)">Debt Propagation</span> Engine</h2>
+
+  <div class="arch-grid reveal">
+    <div class="arch-layer">
+      <div class="arch-layer-title blue"><span class="dot dot-blue"></span>Input + Compute Layer</div>
+      <ul class="arch-items">
+        <li>Developer pastes <strong>GitHub URL</strong> into dashboard</li>
+        <li><strong>AWS Amplify</strong> hosts the React frontend</li>
+        <li><strong>API Gateway</strong> routes the incoming request</li>
+        <li><strong>Lambda 1</strong>: repo clone + static analysis (Radon, Lizard, pip-audit, coverage.py)</li>
+        <li><strong>Lambda 2</strong>: dependency graph via Python ast module</li>
+        <li><strong>Lambda 3</strong>: blast radius calculation per module</li>
+        <li><strong>Lambda 4</strong>: LLM enrichment + fix simulation calls</li>
+      </ul>
+    </div>
+
+    <div class="arch-layer">
+      <div class="arch-layer-title orange"><span class="dot dot-orange"></span>Storage + LLM Layer</div>
+      <ul class="arch-items">
+        <li><strong>DynamoDB</strong>: stores findings, debt scores, graph data, simulation results</li>
+        <li><strong>S3</strong>: raw repo files, generated PDF reports, CTO one-pagers</li>
+        <li><strong>Groq API + Llama 3.1 70B</strong>: 4 sequential LLM calls</li>
+        <li>Fingerprint → Enrich → Simulate → Plan</li>
+        <li>Free tier — no AWS Bedrock credits required</li>
+        <li><strong>Amazon Q Developer</strong>: code quality and security scanning</li>
+      </ul>
+    </div>
+
+    <div class="differentiators">
+      <div class="diff-title">Three Core Differentiators</div>
+      <div class="diff-grid">
+        <div class="diff-item">
+          <div class="diff-num">01</div>
+          <div class="diff-name">Dependency Graph + Blast Radius</div>
+          <div class="diff-desc">Debt severity = file's position in the system, not just its own metrics. One bad module can infect 20 others.</div>
+        </div>
+        <div class="diff-item">
+          <div class="diff-num">02</div>
+          <div class="diff-name">Debt Fingerprinting</div>
+          <div class="diff-desc">Identifies WHY debt exists — architectural pattern, code quality, or integration boundary problem. Root cause, not symptoms.</div>
+        </div>
+        <div class="diff-item">
+          <div class="diff-num">03</div>
+          <div class="diff-name">Fix Simulation</div>
+          <div class="diff-desc">Shows debt score before vs after fixing each issue with cascade benefits — before you touch a single line of code.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section id="stack">
+  <div class="section-label">05 &nbsp; Tech Stack</div>
+  <h2 class="section-title">100% Free<br><span style="color:var(--red)">Infrastructure</span></h2>
+
+  <table class="stack-table reveal">
+    <tbody>
+      <tr><td>Frontend Hosting</td><td>AWS Amplify <span class="free-badge">FREE</span></td></tr>
+      <tr><td>API Layer</td><td>AWS API Gateway <span class="free-badge">FREE</span></td></tr>
+      <tr><td>Compute & Orchestration</td><td>AWS Lambda <span class="free-badge">FREE</span></td></tr>
+      <tr><td>Code Quality</td><td>Amazon Q Developer <span class="free-badge">FREE</span></td></tr>
+      <tr><td>Database</td><td>AWS DynamoDB <span class="free-badge">FREE</span></td></tr>
+      <tr><td>File Storage</td><td>AWS S3 <span class="free-badge">FREE</span></td></tr>
+      <tr><td>Static Analysis</td><td>Radon, Lizard, pip-audit, coverage.py</td></tr>
+      <tr><td>Dependency Graph</td><td>Python ast module</td></tr>
+      <tr><td>LLM Intelligence</td><td>Groq API — Llama 3.1 70B <span class="free-badge">FREE TIER</span></td></tr>
+      <tr><td>Graph Visualization</td><td>D3.js</td></tr>
+      <tr><td>Dashboard Charts</td><td>React + Recharts</td></tr>
+    </tbody>
+  </table>
+
+  <div class="warning-box reveal">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-text">
+      <strong>Amazon CodeGuru was discontinued November 2025.</strong> The hackathon guide is outdated. We use Amazon Q Developer as its replacement alongside open source static analysis tools. Other teams following the guide blindly will waste hours.
+    </div>
+  </div>
+
+  <div class="cost-banner reveal">
+    <div class="cost-stat">
+      <div class="cost-num">₹0</div>
+      <div class="cost-label">Total Infrastructure Cost</div>
+    </div>
+    <div class="cost-stat">
+      <div class="cost-num">4</div>
+      <div class="cost-label">LLM Calls in Pipeline</div>
+    </div>
+    <div class="cost-stat">
+      <div class="cost-num">5</div>
+      <div class="cost-label">Static Analysis Tools</div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section id="demo">
+  <div class="section-label">06 &nbsp; Live Demo</div>
+  <h2 class="section-title">Watch Debt<br><span style="color:var(--red)">Come Alive</span></h2>
+
+  <div class="demo-steps reveal">
+    <div class="demo-step">
+      <div class="demo-step-num">01</div>
+      <div class="demo-step-title">Paste GitHub URL</div>
+      <div class="demo-step-text">Drop any Python repo URL into the dashboard to trigger the full pipeline.</div>
+    </div>
+    <div class="demo-step">
+      <div class="demo-step-num">02</div>
+      <div class="demo-step-title">Static Analysis Runs</div>
+      <div class="demo-step-text">Raw findings generated in real time — complexity, duplication, coverage, vulnerabilities.</div>
+    </div>
+    <div class="demo-step">
+      <div class="demo-step-num">03</div>
+      <div class="demo-step-title">Dependency Graph</div>
+      <div class="demo-step-text">See debt propagating visually across modules with nodes sized by blast radius.</div>
+    </div>
+    <div class="demo-step">
+      <div class="demo-step-num">04</div>
+      <div class="demo-step-title">Debt Fingerprint</div>
+      <div class="demo-step-text">Root cause diagnosed in plain English — not just where debt is, but WHY it exists.</div>
+    </div>
+    <div class="demo-step">
+      <div class="demo-step-num">05</div>
+      <div class="demo-step-title">Top 10 Issues</div>
+      <div class="demo-step-text">Not 300 issues — just 10, each with blast radius badges and a fix simulation button.</div>
+    </div>
+    <div class="demo-step">
+      <div class="demo-step-num">06</div>
+      <div class="demo-step-title">Fix Simulation</div>
+      <div class="demo-step-text">Click any issue — debt score before vs after appears instantly with cascade benefits.</div>
+    </div>
+    <div class="demo-step">
+      <div class="demo-step-num">07</div>
+      <div class="demo-step-title">Unified Debt Score</div>
+      <div class="demo-step-text">Single number 0–100 on a gauge. Plus sprint action plan copy-paste ready.</div>
+    </div>
+    <div class="demo-step">
+      <div class="demo-step-num">08</div>
+      <div class="demo-step-title">CTO One-Pager</div>
+      <div class="demo-step-text">Cost in INR, zero jargon, one page — ready for your next business review.</div>
+    </div>
+  </div>
+
+  <div class="demo-layout reveal">
+    📐 Dashboard Layout: &nbsp;
+    <span>Left</span> — Dependency graph &nbsp;|&nbsp;
+    <span>Centre</span> — Debt score gauge 0–100 &nbsp;|&nbsp;
+    <span>Right</span> — Top 10 issues with fix simulation &nbsp;|&nbsp;
+    <span>Bottom</span> — Sprint action plan tab
+  </div>
+</section>
+
+<!-- IMPACT -->
+<section id="impact">
+  <div class="section-label">07 &nbsp; Impact</div>
+  <h2 class="section-title">Who Benefits &<br>How We <span style="color:var(--red)">Measure</span> Success</h2>
+
+  <div class="impact-grid reveal">
+    <div class="impact-card">
+      <div class="impact-icon">👔</div>
+      <div class="impact-title">CTOs & Engineering Leads</div>
+      <div class="impact-text">Clear business case to prioritize debt paydown with cost in rupees. No jargon. One page. Immediate ROI visibility.</div>
+    </div>
+    <div class="impact-card">
+      <div class="impact-icon">💻</div>
+      <div class="impact-title">Developers</div>
+      <div class="impact-text">Know exactly what to fix first, why it matters, and how long it will take. No more guessing what to work on during cleanup sprints.</div>
+    </div>
+    <div class="impact-card">
+      <div class="impact-icon">🚀</div>
+      <div class="impact-title">Startups</div>
+      <div class="impact-text">Reduce hidden productivity loss before it compounds into a full rewrite. Catch architectural mistakes early when they're cheap to fix.</div>
+    </div>
+    <div class="impact-card">
+      <div class="impact-icon">📈</div>
+      <div class="impact-title">Scale Potential</div>
+      <div class="impact-text">Python now → Java & JS next. GitHub PR bot. SaaS model with continuous monitoring. Enterprise microservice tracking at scale.</div>
+    </div>
+  </div>
+
+  <div class="impact-stat reveal">
+    <div class="impact-stat-num">200–400</div>
+    <div class="impact-stat-label">developer hours saved per year by fixing the top 3 high blast radius issues in a typical mid-size Python repository.</div>
+  </div>
+</section>
+
+<!-- TIMELINE -->
+<section id="timeline">
+  <div class="section-label">08 &nbsp; Build Timeline</div>
+  <h2 class="section-title">What We Build<br>in <span style="color:var(--red)">24 Hours</span></h2>
+
+  <div class="timeline reveal">
+    <div class="timeline-item">
+      <div class="timeline-time">0–4 hrs</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-phase">PHASE 1 — CORE PIPELINE</div>
+        <div class="timeline-desc">Repo cloning via GitPython, all static analysis tools running, structured JSON output ready for downstream processing.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">4–8 hrs</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-phase">PHASE 2 — DEPENDENCY GRAPH</div>
+        <div class="timeline-desc">AST parsing complete, import graph built, blast radius scoring calculated per module. Foundation for all AI reasoning.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">8–14 hrs</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-phase">PHASE 3 — LLM LAYER</div>
+        <div class="timeline-desc">All 4 LLM calls integrated — fingerprinting, enrichment, fix simulation, action plan. Core differentiators working end-to-end.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">14–17 hrs</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-phase">PHASE 4 — DEBT SCORE & STORAGE</div>
+        <div class="timeline-desc">Unified scoring formula implemented across 4 dimensions. DynamoDB wired up and all findings persisted correctly.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">17–22 hrs</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-phase">PHASE 5 — DASHBOARD</div>
+        <div class="timeline-desc">React frontend live on Amplify. Dependency graph visualization, 2x2 impact-effort matrix, fix simulation panel all functional.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-time">22–24 hrs</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-phase">PHASE 6 — POLISH & DEMO</div>
+        <div class="timeline-desc">CTO one-pager generated, demo repo pre-scanned, presentation polished and rehearsed. Everyone aligned on talking points.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="timeline-rule reveal">
+    ⚡ Priority rule: Phases 1 + 2 + 3 working perfectly beats all 6 phases half-built.
+  </div>
+</section>
+
+<!-- TEAM -->
+<section id="team">
+  <div class="section-label">09 &nbsp; The Team</div>
+  <h2 class="section-title">Team<br><span style="color:var(--red)">Fire Storm</span></h2>
+
+  <div class="team-grid reveal">
+    <div class="team-card">
+      <div class="team-name">Venkata Sai GS</div>
+      <div class="team-role">Backend + AI Pipeline Lead</div>
+      <ul class="team-skills">
+        <li>Django & REST APIs</li>
+        <li>PostgreSQL & DynamoDB</li>
+        <li>LLM Integration</li>
+        <li>Static Analysis Pipeline</li>
+        <li>AWS Lambda Orchestration</li>
+      </ul>
+    </div>
+    <div class="team-card">
+      <div class="team-name">Abhishek Hegde</div>
+      <div class="team-role">LLM Prompt Engineer + Demo Prep</div>
+      <ul class="team-skills">
+        <li>Prompt Engineering</li>
+        <li>LLM Call Design</li>
+        <li>PDF Report Generation</li>
+        <li>Demo Repo Selection</li>
+        <li>Presentation Polish</li>
+      </ul>
+    </div>
+    <div class="team-card">
+      <div class="team-name">Suhas V</div>
+      <div class="team-role">AWS Infrastructure + DevOps</div>
+      <ul class="team-skills">
+        <li>AWS Amplify Setup</li>
+        <li>API Gateway Config</li>
+        <li>Lambda Deployment</li>
+        <li>DynamoDB Schema</li>
+        <li>S3 + Amazon Q Dev</li>
+      </ul>
+    </div>
+    <div class="team-card">
+      <div class="team-name">Varun U</div>
+      <div class="team-role">Frontend + Visualization</div>
+      <ul class="team-skills">
+        <li>React Dashboard</li>
+        <li>D3.js Dependency Graph</li>
+        <li>Impact vs Effort Matrix</li>
+        <li>Debt Score Gauge</li>
+        <li>Fix Simulation UI</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="why-grid reveal">
+    <div class="why-card">
+      <div class="why-title">Strong Backend Foundation</div>
+      <div class="why-text">Django and APIs are our core strength — this is our home turf.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-title">Domain Familiarity</div>
+      <div class="why-text">Already familiar with static analysis tools and LLM API integration.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-title">Clear Phased Build Plan</div>
+      <div class="why-text">Demo-first approach with tight, well-scoped phases and a working fallback strategy.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-title">Scope is Tight, Stack is Free</div>
+      <div class="why-text">100% free infrastructure, real differentiation, and a demo-ready build path.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">TDQ<span>.</span></div>
+  <div class="footer-tagline">"We don't just find debt. We diagnose why it exists and simulate what fixing it will do to your system."</div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
+
+  // Animate stat number
+  function animateNum(el, target, prefix='', suffix='') {
+    let start = 0;
+    const duration = 1500;
+    const step = (timestamp) => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      el.textContent = prefix + Math.floor(progress * target) + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  const statObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        if (el.dataset.animated) return;
+        el.dataset.animated = true;
+        if (el.classList.contains('stat-num')) animateNum(el, 33, '', '%');
+        if (el.classList.contains('impact-stat-num')) {
+          el.textContent = '200–400';
+        }
+        statObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  document.querySelectorAll('.stat-num, .impact-stat-num').forEach(el => statObserver.observe(el));
+</script>
+</body>
+</html>
